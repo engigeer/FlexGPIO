@@ -125,25 +125,25 @@ void i2c_task (void){
     //gpio_put_all(outputpacket.value);
 
     //polarity mask resides in the data read from the host.  Polarity is only used for the inputs (for now?)
-    inputpacket.polarity_mask = outputpacket.polarity_mask;
-    inputpacket.enable_mask = outputpacket.enable_mask;
-    inputpacket.direction_mask = outputpacket.direction_mask;
+    // inputpacket.polarity_mask = outputpacket.polarity_mask;
+    // inputpacket.enable_mask = outputpacket.enable_mask;
+    // inputpacket.direction_mask = outputpacket.direction_mask;
 
     //Read the pin values (inputs and outputs)
     uint32_t getval = gpio_get_all();
-    uint32_t masked = getval & inputpacket.enable_mask;
-    masked ^= (inputpacket.polarity_mask & inputpacket.enable_mask);
-    inputpacket.value = masked;
+    // uint32_t masked = getval & inputpacket.enable_mask;
+    // masked ^= (inputpacket.polarity_mask & inputpacket.enable_mask);
+    inputpacket.value = getval;
 
     //Finally, do the necessary math operations on the motor and probe pins to combine then and set the outputs accordingly.
 
-    bool any_alarm_active = (inputpacket.value & 
-       ((1 << ALARMX_PIN) | 
-        (1 << ALARMY_PIN) | 
-        (1 << ALARMZ_PIN) | 
-        (1 << ALARMA_PIN) | 
-        (1 << ALARMB_PIN) | 
-        (1 << ALARMC_PIN))) != 0;
+    bool any_alarm_active = ((~inputpacket.value) &
+     ((1u << ALARMX_PIN) |
+      (1u << ALARMY_PIN) | 
+      (1u << ALARMZ_PIN) | 
+      (1u << ALARMA_PIN) | 
+      (1u << ALARMB_PIN) | 
+      (1u << ALARMC_PIN))) != 0;
 
     bool probe_or_value = (inputpacket.value & (1 << TOOL_PIN)) || (inputpacket.value & (1 << PROBE_PIN)); //or
     //bool probe_or_value = !!(inputpacket.value & (1 << TOOL_PIN)) ^ !!(inputpacket.value & (1 << PROBE_PIN)); //xor
@@ -163,52 +163,57 @@ void i2c_task (void){
 
     #if 0 //testing code
 
-    Serial.printf("outputpacket.value ");
+    printf("alarmx / tool ");
     // For multiple bytes
-    Serial.printf("%d", outputpacket.value);
-    Serial.printf("\r\n");
+    printf("%d", (getval & (1 << ALARMX_PIN)) != 0);
+    printf("\r\n");
 
-    Serial.printf("masked ");
-    // Print each bit from MSB to LSB
-    for (int i = sizeof(masked) * 8 - 1; i >= 0; i--) {
-        Serial.printf("%d", (masked >> i) & 1);
-    }
-    Serial.printf("\r\n");
-
-    Serial.printf("inputpacket.polarity_mask ");
+     printf("alarmy / probe ");
     // For multiple bytes
-    Serial.printf("%d", inputpacket.polarity_mask);
-    Serial.printf("\r\n");  
+    printf("%d", (getval & (1 << ALARMY_PIN)) != 0);
+    printf("\r\n");
 
-    Serial.printf("inputpacket.enable_mask ");
-    // For multiple bytes
-    Serial.printf("%d", inputpacket.enable_mask);
-    Serial.printf("\r\n");  
+    // printf("masked ");
+    // // Print each bit from MSB to LSB
+    // for (int i = sizeof(masked) * 8 - 1; i >= 0; i--) {
+    //     printf("%d", (masked >> i) & 1);
+    // }
+    // printf("\r\n");
+
+    // printf("inputpacket.polarity_mask ");
+    // // For multiple bytes
+    // printf("%d", inputpacket.polarity_mask);
+    // printf("\r\n");  
+
+    // printf("inputpacket.enable_mask ");
+    // // For multiple bytes
+    // printf("%d", inputpacket.enable_mask);
+    // printf("\r\n");  
 
     //Serial.printf("inputpacket.direction_mask ");
     // For multiple bytes
     //Serial.printf("%d", inputpacket.direction_mask);
     //Serial.printf("\r\n");  
 
-    Serial.printf("any_alarm_active ");
+    printf("any_alarm_active ");
     // For multiple bytes
-    Serial.printf("%d", any_alarm_active);
-    Serial.printf("\r\n");
+    printf("%d", any_alarm_active);
+    printf("\r\n");
 
-    Serial.printf("probe_or_value ");
-    // For multiple bytes
-    Serial.printf("%d", probe_or_value);
-    Serial.printf("\r\n");
+    // printf("probe_or_value ");
+    // // For multiple bytes
+    // printf("%d", probe_or_value);
+    // printf("\r\n");
 
-    Serial.printf("inputpacket.value ");
-    // For multiple bytes
-    Serial.printf("%d", inputpacket.value);
-    Serial.printf("\r\n");
+    // printf("inputpacket.value ");
+    // // For multiple bytes
+    // printf("%d", inputpacket.value);
+    // printf("\r\n");
 
-    Serial.printf("outputpacket.value ");
-    // For multiple bytes
-    Serial.printf("%d", outputpacket.value);
-    Serial.printf("\r\n");
+    // printf("outputpacket.value ");
+    // // For multiple bytes
+    // printf("%d", outputpacket.value);
+    // printf("\r\n");
 
     sleep_ms(500);
     #endif

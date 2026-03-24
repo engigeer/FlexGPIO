@@ -1,8 +1,6 @@
 #ifndef __I2C_FLEXIGPIO_H__
 #define __I2C_FLEXIGPIO_H__
 
-#include <Arduino.h>
-//#include <Wire.h>
 #include <stdio.h>
 #include <string.h>
 #include "pico/stdlib.h"
@@ -15,8 +13,8 @@
 #include "pico/time.h"
 #include "pico/stdio.h"
 
-#include <i2c_fifo.h>
-#include <i2c_slave.h>
+#include "i2c_fifo.h"
+#include "i2c_slave.h"
 
 #include "i2c_flexigpio.h"
 
