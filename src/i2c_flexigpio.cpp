@@ -43,6 +43,24 @@ uint8_t mem_address_written = 0;
 int character_sent;
 int command_error = 0;
 
+const uint32_t input_pin_mask = 
+    (1u << TOOL_PIN  )|
+    (1u << PROBE_PIN )|
+    (1u << ALARMX_PIN)|
+    (1u << ALARMY_PIN)| 
+    (1u << ALARMZ_PIN)| 
+    (1u << ALARMA_PIN)| 
+    (1u << ALARMB_PIN)| 
+    (1u << ALARMC_PIN);
+
+const uint32_t comm_pin_mask = 
+    (1u << MCU_PRB_PIN)|
+    (1u << MCU_IRQ_PIN)|
+    (1u << I2C_SLAVE_SDA_PIN)|
+    (1u << I2C_SLAVE_SCL_PIN);
+
+static uint32_t old_inputs, new_inputs, changed;
+
 // Our handler is called from the I2C ISR, so it must complete quickly. Blocking calls /
 // printing to stdio may interfere with interrupt handling.
 static void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
@@ -84,42 +102,41 @@ static void setup_slave() {
 
 void i2c_task (void){
     
-    //Set the outputs
-    const uint32_t mask = ~((1 << MCU_PRB_PIN) | (1 << MCU_IRQ_PIN) | (1 << I2C_SLAVE_SDA_PIN) | (1 << I2C_SLAVE_SCL_PIN));
     // Get current state of pins
-    uint32_t mask_values = gpio_get_all() & ~mask;
+    uint32_t comm_pin_values = gpio_get_all() & comm_pin_mask;
     // Apply new values with mask and preserve existing pin states    
-    gpio_put_all((outputpacket.value & mask) | mask_values);
-    //gpio_put_all(outputpacket.value);
+    gpio_put_all((outputpacket.value & ~comm_pin_mask) |comm_pin_values);
 
-    //Read the pin values (inputs and outputs)
+    // Mask data resides in packet from host
+    inputpacket.probe_irq_mask = outputpacket.probe_irq_mask;
+    inputpacket.mcu_irq_mask = outputpacket.mcu_irq_mask & ~inputpacket.probe_irq_mask; //remove probe_pins from mcu_irq_mask
+
+    // Read the pin values (inputs and outputs)
     uint32_t getval = gpio_get_all();
     inputpacket.value = getval;
-    inputpacket.mcu_irq_mask &= ~inputpacket.probe_irq_mask; //remove probe_pins from mcu_irq_mask
 
-    //Finally, do the necessary math operations on the motor and probe pins to combine then and set the outputs accordingly.
+    // Do the necessary math operations to combine pins and set the irq signals accordingly
+    static bool alarm_or_input = false;
+    static bool probe_or_tool = false;
 
-    bool any_signal_active = ((inputpacket.value) & (uint32_t)inputpacket.mcu_irq_mask &
-     ((1u << TOOL_PIN  ) |
-      (1u << PROBE_PIN ) |
-      (1u << ALARMX_PIN) |
-      (1u << ALARMY_PIN) | 
-      (1u << ALARMZ_PIN) | 
-      (1u << ALARMA_PIN) | 
-      (1u << ALARMB_PIN) | 
-      (1u << ALARMC_PIN))) != 0;
+    new_inputs = (inputpacket.value & input_pin_mask);
+    changed = (new_inputs ^ old_inputs);
+    old_inputs = new_inputs;
 
-    bool probe_or_value = ((inputpacket.value & (uint32_t)inputpacket.probe_irq_mask &
-      (1u << TOOL_PIN)) |
-      (1u << PROBE_PIN)) != 0;
+    // MCU interrupt is toggle (stateless)
+    if (changed & inputpacket.mcu_irq_mask)
+        alarm_or_input ^= 1;
+    
+    // Probe interrupt tracks active pin state (assumes only one pin is active in irq mask)
+    probe_or_tool = (new_inputs & (uint32_t)inputpacket.probe_irq_mask) != 0;
 
     //IRQ pins are rising/falling (all inversion handled by host)
-    gpio_put(MCU_PRB_PIN, probe_or_value);
-    gpio_put(MCU_IRQ_PIN, any_signal_active);
+    gpio_put(MCU_PRB_PIN, probe_or_tool);
+    gpio_put(MCU_IRQ_PIN, alarm_or_input);
 
     #if 0 //testing code
 
-     printf("probe_or_value");
+    printf("probe_or_value ");
     // For multiple bytes
     printf("%d", probe_or_value);
     printf("\r\n");
@@ -129,7 +146,17 @@ void i2c_task (void){
     printf("%d", any_signal_active);
     printf("\r\n");
 
-    sleep_ms(500);
+    printf("inputpacket.value ");
+    // For multiple bytes
+    printf("%d", inputpacket.value);
+    printf("\r\n");
+
+    printf("outputpacket.value ");
+    // For multiple bytes
+    printf("%d", outputpacket.value);
+    printf("\r\n");
+
+    sleep_ms(1500);
     #endif
 }
 
