@@ -64,20 +64,20 @@ const uint8_t AUXOUT7_PIN         = 16;
 //contains data from the host (output set values, polarity mask).
 typedef struct __attribute__((packed)) {
     uint32_t value;
-    uint16_t probe_irq_mask;
     uint16_t mcu_irq_mask;
+    uint16_t probe_irq_mask;
 } output_packet_t;
 
 //contains data sent to the host (pin values).
 typedef struct __attribute__((packed)) {
     uint32_t value;
-    uint16_t probe_irq_mask;
     uint16_t mcu_irq_mask;
+    uint16_t probe_irq_mask;
 } input_packet_t;
 
 typedef struct
 {
-    uint8_t mem[64];
+    uint8_t mem[8];
     uint8_t mem_address;
     uint8_t mem_address_written;
 } status_context_t;
